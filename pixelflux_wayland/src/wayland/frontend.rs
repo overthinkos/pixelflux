@@ -117,7 +117,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 static SERIAL_COUNTER: AtomicU32 = AtomicU32::new(1);
 
 pub fn next_serial() -> Serial {
-    { let __ns = SERIAL_COUNTER.fetch_add(1, Ordering::SeqCst); eprintln!("[PFXDBG] next_serial(input/focus)={}", __ns); Serial::from(__ns) }
+    Serial::from(SERIAL_COUNTER.fetch_add(1, Ordering::SeqCst))
 }
 
 pub fn wayland_time() -> u32 {
@@ -269,21 +269,27 @@ impl XdgDecorationHandler for AppState {
         toplevel.with_pending_state(|state| {
             state.decoration_mode = Some(Mode::ServerSide);
         });
-        eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+        if toplevel.is_initial_configure_sent() {
+            toplevel.send_configure();
+        }
     }
 
     fn request_mode(&mut self, toplevel: ToplevelSurface, mode: Mode) {
         toplevel.with_pending_state(|state| {
             state.decoration_mode = Some(mode);
         });
-        eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+        if toplevel.is_initial_configure_sent() {
+            toplevel.send_configure();
+        }
     }
 
     fn unset_mode(&mut self, toplevel: ToplevelSurface) {
         toplevel.with_pending_state(|state| {
             state.decoration_mode = Some(Mode::ServerSide);
         });
-        eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+        if toplevel.is_initial_configure_sent() {
+            toplevel.send_configure();
+        }
     }
 }
 
@@ -311,7 +317,7 @@ impl WlrLayerShellHandler for AppState {
             surface.with_pending_state(|state| {
                 state.size = Some(((mode.size.w as f64) as i32, (mode.size.h as f64) as i32).into());
             });
-            eprintln!("[PFXDBG] cfg serial={:?}", surface.send_configure());
+            surface.send_configure();
 
             let layer = DesktopLayerSurface::new(surface, namespace);
             let _ = layer_map_for_output(output).map_layer(&layer);
@@ -421,7 +427,7 @@ impl CompositorHandler for AppState {
                     state.states.set(XdgState::Fullscreen);
                     state.size = Some((logical_width, logical_height).into());
                 });
-                eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+                toplevel.send_configure();
 
                 self.pending_windows.push(window);
             } else {
@@ -444,7 +450,7 @@ impl CompositorHandler for AppState {
                             state.states.set(XdgState::Fullscreen);
                             state.size = Some((expected_w, expected_h).into());
                         });
-                        eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+                        toplevel.send_configure();
                     }
                 }
 
@@ -1291,7 +1297,7 @@ impl XdgShellHandler for AppState {
         if let Err(err) = self.popups.track_popup(PopupKind::Xdg(surface.clone())) {
             eprintln!("Failed to track popup: {:?}", err);
         }
-        eprintln!("[PFXDBG] cfg(popup) serial={:?}", surface.send_configure());
+        let _ = surface.send_configure();
     }
     fn grab(
         &mut self,

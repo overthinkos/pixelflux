@@ -583,7 +583,7 @@ fn run_wayland_thread(command_rx: smithay::reexports::calloop::channel::Channel<
                                     state.states.set(State::Activated);
                                     state.size = Some((logical_width, logical_height).into());
                                 });
-                                eprintln!("[PFXDBG] cfg serial={:?}", toplevel.send_configure());
+                                toplevel.send_configure();
                             }
                         }
                     }
